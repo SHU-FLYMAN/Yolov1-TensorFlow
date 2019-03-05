@@ -1,52 +1,47 @@
 import os
-import imgaug as ia
 import numpy as np
+import imgaug as ia
 import tensorflow as tf
-import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
-
+import xml.etree.ElementTree as ET
 from tqdm import tqdm
 from imgaug import augmenters as iaa
 from configs import CLASS, Class_to_index, Colors_to_map
 
 
-
 class To_tfrecords(object):
-    def __init__(self, usage='train',
+    def __init__(self,
                  load_folder='data/pascal_voc/VOCdevkit/VOC2007',
+                 txt_file='trainval.txt',
                  save_folder='data/tfr_voc'):
         self.load_folder = load_folder
         self.save_folder = save_folder
+        self.txt_file = txt_file
+        self.usage = self.txt_file.split('.')[0]
         if not os.path.exists(self.save_folder):
             os.makedirs(self.save_folder)
-        self.usage = usage
         self.classes = CLASS
         self.class_to_index = Class_to_index
 
     def transform(self):
         # 1. 获取作为训练集/验证集的图片编号
-        if self.usage == 'train':
-            txt_file = os.path.join(self.load_folder,
-                                    'ImageSets',
-                                    'Main',
-                                    'trainval.txt')
-        else:
-            raise ValueError("We only support transform train step now")
+        txt_file = os.path.join(self.load_folder, 'ImageSets', 'Main', self.txt_file)
         with open(txt_file) as f:
             image_index = [_index.strip() for _index in f.readlines()]
 
         # 2. 开始循环写入每一张图片以及标签到tfrecord文件
-        with tf.python_io.TFRecordWriter(os.path.join(self.save_folder, self.usage + '.tfrecords')) as writer:
+        with tf.python_io.TFRecordWriter(os.path.join(
+                self.save_folder, self.usage + '.tfrecords')) as writer:
             for _index in tqdm(image_index, desc='开始写入tfrecords数据'):
                 filename = os.path.join(self.load_folder, 'JPEGImages', _index) + '.jpg'
                 xml_file = os.path.join(self.load_folder, 'Annotations', _index) + '.xml'
-                if not os.path.exists(filename):
-                    print(filename)
                 assert os.path.exists(filename)
                 assert os.path.exists(xml_file)
+
                 img = tf.gfile.FastGFile(filename, 'rb').read()
                 # 解析label文件
                 label = self._parser_xml(xml_file)
+
                 filename = filename.encode()
                 # 需要将其转换一下用str >>> bytes encode()
                 label = [float(_) for _ in label]
@@ -100,20 +95,21 @@ class To_tfrecords(object):
 
 
 class Dataset(object):
-    def __init__(self, filenames,
+    def __init__(self,
+                 filenames,
                  batch_size=32,
-                 usage='train',
-                 enhance=False):
+                 enhance=False,
+                 image_size=448,
+                 cell_size=7):
         self.filenames = filenames
         self.batch_size = batch_size
-        self.usage = usage
         self.enhance = enhance
-        self.image_size = 448
-        self.cell_size = 7
+        self.image_size = image_size
+        self.cell_size = cell_size
         if self.enhance:
-            self.seq = self._seq()
+            self.seq = Dataset._seq()
 
-    def read(self):
+    def transform(self):
         dataset = tf.data.TFRecordDataset(self.filenames)
         dataset = dataset.map(Dataset._parser)
         # 2. 数据对图片以及标签进行处理
@@ -180,7 +176,8 @@ class Dataset(object):
         bbs_aug = seq_det.augment_bounding_boxes([bbs])[0]
         return image_aug, bbs_aug.remove_out_of_image().clip_out_of_image()
 
-    def _seq(self):
+    @staticmethod
+    def _seq():
         """数据增强模块,定制发生什么变化"""
         seq = iaa.Sequential([
             iaa.Flipud(0.5),
@@ -201,7 +198,10 @@ class Dataset(object):
 
 
 class ShowImageLabel(object):
-    def __init__(self, image_size, cell_size, batch_size):
+    def __init__(self,
+                 image_size,
+                 cell_size,
+                 batch_size):
         self.image_size = image_size
         self.cell_size = cell_size
         self.batch_size = batch_size
@@ -221,13 +221,13 @@ class ShowImageLabel(object):
                 label.append(ia.BoundingBox(x1=x_1, y1=y_1, x2=x_2, y2=y_2, label=class_id))
         return image, ia.BoundingBoxesOnImage(label, shape=image.shape)
 
-    def draw_box(self, image, bbs):
+    @staticmethod
+    def draw_box(image, bbs):
         """ 绘制图片以及对应的bounding box
 
         Args:
             img: numpy array
             boxes: BoundingBoxesOnImage对象
-
         """
         for bound_box in bbs.bounding_boxes:
             x_center = bound_box.center_x
@@ -252,13 +252,15 @@ class ShowImageLabel(object):
 
 
 if __name__ == '__main__':
-    # to_tfrecord = To_tfrecords(usage='train')
-    # to_tfrecord.transform()
     check = 15
-    _dataset = Dataset(filenames='data/tfr_voc/train.tfrecords', enhance=True)
-    data = _dataset.read()
-    iterator = data.make_one_shot_iterator()
+    to_tfrecord = To_tfrecords(txt_file='trainval.txt')
+    to_tfrecord.transform()
+    train_generator = Dataset(filenames='data/tfr_voc/trainval.tfrecords',
+                              enhance=True)
+    train_dataset = train_generator.transform()
+    iterator = train_dataset.make_one_shot_iterator()
     next_element = iterator.get_next()
+    # 检查生成的图像及 bounding box
     show_images = ShowImageLabel(448, 7, 32)
     count = 0
     with tf.Session() as sess:
@@ -269,8 +271,3 @@ if __name__ == '__main__':
                 image, label = show_images.parser_label(image, label)
                 show_images.draw_box(image, label)
                 count += 1
-
-
-
-
-

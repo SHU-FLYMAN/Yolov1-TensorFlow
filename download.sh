@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 echo "Creating data directory..."
 mkdir -p data && cd data
-mkdir weights
-mkdir pascal_voc
+mkdir -p weights
+mkdir -p pascal_voc
 
 echo "Downloading Pascal VOC 2012 data..."
-axel -n 30 http://pjreddie.com/media/files/VOCtrainval_06-Nov-2007.tar
+axel -n 30 -c http://pjreddie.com/media/files/VOCtrainval_06-Nov-2007.tar
 
 echo "Extracting VOC data..."
 tar xf VOCtrainval_06-Nov-2007.tar
