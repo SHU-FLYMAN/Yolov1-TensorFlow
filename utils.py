@@ -114,6 +114,7 @@ class Dataset(object):
         dataset = dataset.map(Dataset._parser)
         # 2. 数据对图片以及标签进行处理
         dataset = dataset.map(map_func=lambda image, label: tf.py_func(func=self._process, inp=[image, label], Tout=[tf.uint8, tf.float32]), num_parallel_calls=8)
+
         dataset = dataset.shuffle(buffer_size=100)
         dataset = dataset.batch(self.batch_size).repeat()
         return dataset
@@ -229,6 +230,7 @@ class ShowImageLabel(object):
             img: numpy array
             boxes: BoundingBoxesOnImage对象
         """
+        image *= 255.0
         for bound_box in bbs.bounding_boxes:
             x_center = bound_box.center_x
             y_center = bound_box.center_y

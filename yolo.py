@@ -41,7 +41,7 @@ class YOLONET(object):
                       images,
                       output_size,
                       scope='yolo_net'):
-        with tf.variable_scope(scope):
+        with tf.name_scope(scope):
             with slim.arg_scope(
                     [slim.conv2d, slim.fully_connected],
                     activation_fn=YOLONET.leaky_relu(self.leaky_alpha),
@@ -86,7 +86,7 @@ class YOLONET(object):
                 net = slim.fully_connected(net, 512, scope='fc_33')
                 net = slim.fully_connected(net, 4096, scope='fc_34')
                 net = slim.dropout(net, keep_prob=self.keep_prob,
-                                        is_training=self.is_training,
+                                   is_training=self.is_training,
                                    scope='dropout_35')
                 net = slim.fully_connected(net,
                                            output_size,
@@ -94,7 +94,7 @@ class YOLONET(object):
                                            scope='fc_36')
                 # [Batch, 7, 7, 30] reshape 预测结果
                 net = tf.reshape(net, name='predicts', shape=[None, self.cell_size, self.cell_size,
-                                                                   5 * self.boxes_per_cell + self.class_num])
+                                                              5 * self.boxes_per_cell + self.class_num])
         return net
 
     def loss_layer(self, predicts, labels, scope='loss'):
@@ -148,6 +148,7 @@ class YOLONET(object):
                 pre_confidence, iou_pre_label, object_mask, no_object_mask)
             # 6. 坐标损失
             coord_loss = self.coord_loss(pre_boxes, lab_boxes, object_mask)
+
             tf.losses.add_loss(class_loss)
             tf.losses.add_loss(object_confidence_loss)
             tf.losses.add_loss(no_object_confidence_loss)
@@ -170,7 +171,7 @@ class YOLONET(object):
         Returns:
             类别损失
         """
-        # 乘以 label_response 来去除掉没有Object位置的类别损失
+        # 乘以 label_response 来去除掉没有Object位置多计算出的类别损失
         # 注意一个cell中是否有物体是通过置信度损失来回归的
         # 这种分开的思想让不同位置的参数回归不同属性,而不是把它们融合在一起
         with tf.name_scope('class loss'):
@@ -196,11 +197,14 @@ class YOLONET(object):
         with tf.name_scope('Confidence loss'):
             with tf.name_scope("Object Confidence loss"):
                 # 用目标掩模进行判断是否有目标
+                # 实际是 object_mask * pre_confidence - object_mask * iou_pre_label
+                # 我们将式子合并之后变为下面的样子
                 object_confidence_delta = object_mask * (pre_confidence - iou_pre_label)
                 object_confidence_loss = self.object_confidence_scale * tf.reduce_mean(
                     tf.reduce_sum(tf.square(object_confidence_delta), axis=[1, 2, 3]))
             with tf.name_scope('No Object Confidence loss'):
                 # 只要预测出置信度就是错的,我们用掩模抑制
+                # 实际是 no_object_mask * pre_confidence - no_object_mask * 0 因为这些位置没有Object,因此iou即为0
                 no_object_confidence_delta = no_object_mask * pre_confidence
                 no_object_confidence_loss = self.no_object_confidence_scale * tf.reduce_mean(
                     tf.reduce_sum(tf.square(no_object_confidence_delta), axis=[1, 2, 3]))
