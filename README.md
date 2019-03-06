@@ -2,7 +2,7 @@
 
 > 论文地址: https://arxiv.org/pdf/1506.02640.pdf
 >
-> 笔记地址: https://github.com/SHU-FLYMAN/Yolov1-TensorFlow/docs/yolov1.html
+> 笔记地址: https://github.com/SHU-FLYMAN/Yolov1-TensorFlow/docs/yolov1.pdf
 
 这个系列，暂且叫做《**飞翔的荷兰人带你入门目标检测**：第一季》，是为了帮助更多的人入门目标检测的，第一季我们将讲完整个YOLO系列。
 
