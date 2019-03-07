@@ -45,7 +45,7 @@ conda install 你需要的包
 
 ------
 
-## TODO
+## Summay
 
 我们除了学会Yolo的实现过程外，还包括学习到:
 
@@ -68,5 +68,6 @@ conda install 你需要的包
 - [ ] 多尺度
 - [ ] TensorFlow Debug
 
-其实学习最好的方式就是看别人的源代码然后自己做一些笔记, TensorFlow官网也是一个很值得学习的地方。后面我们将会实现Yolov3, 在这个教程中,我们将会用从零训练一个Yolov3网络,并且准确率最终会达到start-of-art.
-
+其实学习最好的方式就是看别人的源代码然后自己做一些笔记, TensorFlow官网也是一个很值得学习的地方。后面我们将会实现Yolov3, 在这个教程中,我们将会用从零训练一个Yolov3网络,并且准确率最终会达到state-of-art.
+## TODO
+- [ ] 网络训练过程
