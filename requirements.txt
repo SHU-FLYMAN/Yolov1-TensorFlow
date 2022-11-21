@@ -1,5 +1,5 @@
 matplotlib==3.0.2
 tqdm==4.31.1
 numpy==1.15.4
-tensorflow==1.12.0
+tensorflow==2.9.3
 imgaug==0.2.8
